@@ -1,0 +1,1226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>SmartHome Control</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;800&family=Exo+2:wght@300;400;500;600&display=swap" rel="stylesheet"/>
+<style>
+/* ── RESET & ROOT ─────────────────────────────────── */
+*{margin:0;padding:0;box-sizing:border-box;}
+:root{
+  --bg:        #060b18;
+  --surface:   #0d1526;
+  --card:      #111d35;
+  --card2:     #162040;
+  --border:    rgba(0,212,255,0.15);
+  --accent:    #00d4ff;
+  --accent2:   #00ff9d;
+  --accent3:   #ff6b6b;
+  --text:      #e2eaf8;
+  --muted:     #6b7fa3;
+  --on:        #00ff9d;
+  --off:       #3a4a6b;
+  --warn:      #ffb347;
+  --danger:    #ff4757;
+  --radius:    14px;
+  --shadow:    0 8px 32px rgba(0,0,0,0.5);
+}
+body{
+  font-family:'Exo 2',sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  min-height:100vh;
+  overflow-x:hidden;
+}
+
+/* ── BACKGROUND GRID ──────────────────────────────── */
+body::before{
+  content:'';
+  position:fixed;inset:0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.03) 1px,transparent 1px),
+    linear-gradient(90deg,rgba(0,212,255,0.03) 1px,transparent 1px);
+  background-size:40px 40px;
+  pointer-events:none;z-index:0;
+}
+body::after{
+  content:'';
+  position:fixed;
+  top:-40%;left:-20%;
+  width:70%;height:70%;
+  background:radial-gradient(ellipse,rgba(0,212,255,0.06) 0%,transparent 70%);
+  pointer-events:none;z-index:0;
+}
+
+/* ── SCROLLBAR ────────────────────────────────────── */
+::-webkit-scrollbar{width:6px;}
+::-webkit-scrollbar-track{background:var(--surface);}
+::-webkit-scrollbar-thumb{background:var(--accent);border-radius:3px;}
+
+/* ── VIEWS ────────────────────────────────────────── */
+.view{display:none;position:relative;z-index:1;}
+.view.active{display:block;}
+
+/* ══════════════════════════════════════════════════
+   LOGIN
+══════════════════════════════════════════════════ */
+#loginView{
+  min-height:100vh;
+  display:none;
+  align-items:center;justify-content:center;
+}
+#loginView.active{display:flex;}
+
+.login-box{
+  width:420px;
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:20px;
+  padding:48px 40px;
+  box-shadow:var(--shadow),0 0 80px rgba(0,212,255,0.08);
+  animation:fadeUp .5s ease;
+}
+@keyframes fadeUp{from{opacity:0;transform:translateY(24px);}to{opacity:1;transform:none;}}
+
+.login-logo{
+  text-align:center;margin-bottom:36px;
+}
+.login-logo .logo-icon{
+  font-size:3rem;margin-bottom:12px;
+  filter:drop-shadow(0 0 16px var(--accent));
+}
+.login-logo h1{
+  font-family:'Orbitron',sans-serif;
+  font-size:1.5rem;font-weight:800;
+  letter-spacing:3px;color:var(--accent);
+}
+.login-logo p{color:var(--muted);font-size:.85rem;margin-top:4px;}
+
+.form-group{margin-bottom:20px;}
+.form-group label{
+  display:block;font-size:.8rem;
+  font-weight:600;letter-spacing:1px;
+  color:var(--muted);text-transform:uppercase;
+  margin-bottom:8px;
+}
+.form-group input{
+  width:100%;padding:13px 16px;
+  background:var(--surface);
+  border:1px solid var(--border);
+  border-radius:10px;
+  color:var(--text);font-family:'Exo 2',sans-serif;font-size:.95rem;
+  transition:border .2s,box-shadow .2s;outline:none;
+}
+.form-group input:focus{
+  border-color:var(--accent);
+  box-shadow:0 0 0 3px rgba(0,212,255,0.15);
+}
+
+.btn-login{
+  width:100%;padding:14px;margin-top:8px;
+  background:linear-gradient(135deg,var(--accent),#0099cc);
+  border:none;border-radius:10px;
+  color:#fff;font-family:'Orbitron',sans-serif;
+  font-size:.9rem;font-weight:600;letter-spacing:2px;
+  cursor:pointer;transition:all .2s;
+}
+.btn-login:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,212,255,0.35);}
+.btn-login:active{transform:none;}
+
+.login-error{
+  display:none;
+  background:rgba(255,71,87,0.15);
+  border:1px solid rgba(255,71,87,0.4);
+  border-radius:8px;padding:10px 14px;
+  color:var(--danger);font-size:.85rem;
+  margin-top:16px;text-align:center;
+}
+.login-error.show{display:block;}
+
+.login-hint{
+  margin-top:24px;padding-top:20px;
+  border-top:1px solid var(--border);
+  font-size:.8rem;color:var(--muted);text-align:center;
+}
+.login-hint span{color:var(--accent2);font-weight:600;}
+
+/* ══════════════════════════════════════════════════
+   DASHBOARD LAYOUT
+══════════════════════════════════════════════════ */
+#dashView{min-height:100vh;display:none;flex-direction:column;}
+#dashView.active{display:flex;}
+
+/* ── TOPBAR ───────────────────────────────────────── */
+.topbar{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:0 32px;height:68px;
+  background:rgba(13,21,38,0.95);
+  border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:100;
+  backdrop-filter:blur(12px);
+}
+.topbar-left{display:flex;align-items:center;gap:16px;}
+.topbar-logo{
+  font-family:'Orbitron',sans-serif;
+  font-size:1.1rem;font-weight:800;
+  color:var(--accent);letter-spacing:2px;
+}
+.topbar-logo span{color:var(--text);font-weight:400;}
+
+.badge-role{
+  padding:4px 12px;border-radius:20px;
+  font-size:.7rem;font-weight:600;letter-spacing:1px;
+  text-transform:uppercase;
+}
+.badge-role.admin{background:rgba(0,212,255,0.15);color:var(--accent);border:1px solid rgba(0,212,255,0.3);}
+.badge-role.guest{background:rgba(0,255,157,0.12);color:var(--accent2);border:1px solid rgba(0,255,157,0.25);}
+
+.topbar-right{display:flex;align-items:center;gap:16px;}
+.topbar-user{font-size:.9rem;color:var(--muted);}
+.topbar-user strong{color:var(--text);}
+
+.btn-icon{
+  background:rgba(255,255,255,0.05);
+  border:1px solid var(--border);
+  border-radius:10px;padding:8px 14px;
+  color:var(--muted);font-size:.8rem;
+  cursor:pointer;transition:all .2s;font-family:'Exo 2',sans-serif;
+  display:flex;align-items:center;gap:6px;
+}
+.btn-icon:hover{background:rgba(0,212,255,0.1);color:var(--accent);border-color:rgba(0,212,255,0.3);}
+
+.notif-btn{position:relative;}
+.notif-badge{
+  position:absolute;top:-4px;right:-4px;
+  background:var(--danger);color:#fff;
+  font-size:.65rem;font-weight:700;
+  border-radius:50%;width:16px;height:16px;
+  display:flex;align-items:center;justify-content:center;
+}
+
+/* ── MAIN BODY ────────────────────────────────────── */
+.dash-body{display:flex;flex:1;}
+
+/* ── SIDEBAR ──────────────────────────────────────── */
+.sidebar{
+  width:220px;flex-shrink:0;
+  background:var(--surface);
+  border-right:1px solid var(--border);
+  padding:24px 0;
+  display:flex;flex-direction:column;gap:4px;
+}
+.sidebar-section{
+  padding:6px 16px 2px;
+  font-size:.65rem;font-weight:600;
+  letter-spacing:1.5px;color:var(--muted);
+  text-transform:uppercase;margin-top:12px;
+}
+.sidebar-item{
+  margin:0 12px;padding:10px 14px;
+  border-radius:10px;cursor:pointer;
+  display:flex;align-items:center;gap:10px;
+  font-size:.88rem;color:var(--muted);
+  transition:all .2s;
+}
+.sidebar-item:hover{background:rgba(0,212,255,0.08);color:var(--text);}
+.sidebar-item.active{
+  background:rgba(0,212,255,0.12);
+  color:var(--accent);
+  border:1px solid rgba(0,212,255,0.2);
+}
+.sidebar-item .si-icon{font-size:1rem;width:20px;text-align:center;}
+
+/* ── CONTENT ──────────────────────────────────────── */
+.content{flex:1;padding:28px 32px;overflow-y:auto;}
+
+.page{display:none;}
+.page.active{display:block;animation:fadeIn .3s ease;}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px);}to{opacity:1;transform:none;}}
+
+.page-title{
+  font-family:'Orbitron',sans-serif;
+  font-size:1.2rem;font-weight:600;
+  color:var(--text);letter-spacing:1px;
+  margin-bottom:24px;
+  display:flex;align-items:center;gap:12px;
+}
+.page-title::after{
+  content:'';flex:1;height:1px;
+  background:linear-gradient(90deg,var(--border),transparent);
+}
+
+/* ══════════════════════════════════════════════════
+   DEVICE CARDS
+══════════════════════════════════════════════════ */
+.devices-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(280px,1fr));
+  gap:20px;
+}
+
+.device-card{
+  background:var(--card);
+  border:1px solid var(--border);
+  border-radius:var(--radius);
+  padding:22px;
+  transition:all .25s;
+  position:relative;overflow:hidden;
+}
+.device-card::before{
+  content:'';position:absolute;
+  top:0;left:0;right:0;height:2px;
+  background:linear-gradient(90deg,transparent,var(--accent),transparent);
+  opacity:0;transition:opacity .3s;
+}
+.device-card:hover{
+  border-color:rgba(0,212,255,0.3);
+  transform:translateY(-3px);
+  box-shadow:0 12px 40px rgba(0,0,0,0.4);
+}
+.device-card:hover::before{opacity:1;}
+.device-card.on{border-color:rgba(0,255,157,0.25);}
+.device-card.on::before{background:linear-gradient(90deg,transparent,var(--on),transparent);opacity:1;}
+
+.card-header{display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:16px;}
+.card-icon{
+  width:48px;height:48px;border-radius:12px;
+  display:flex;align-items:center;justify-content:center;
+  font-size:1.5rem;
+  background:rgba(255,255,255,0.05);
+  border:1px solid var(--border);
+}
+.card-icon.on{
+  background:rgba(0,255,157,0.12);
+  border-color:rgba(0,255,157,0.3);
+  filter:drop-shadow(0 0 8px rgba(0,255,157,0.3));
+}
+
+.status-dot{
+  width:10px;height:10px;border-radius:50%;
+  background:var(--off);margin-top:4px;
+  transition:all .3s;
+}
+.status-dot.on{
+  background:var(--on);
+  box-shadow:0 0 8px var(--on);
+  animation:pulse 2s infinite;
+}
+@keyframes pulse{0%,100%{box-shadow:0 0 8px var(--on);}50%{box-shadow:0 0 16px var(--on),0 0 24px rgba(0,255,157,0.3);}}
+
+.card-name{font-size:1rem;font-weight:600;margin-bottom:2px;}
+.card-type{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;}
+.card-id{font-size:.7rem;color:var(--muted);margin-top:2px;font-family:monospace;}
+
+/* Toggle switch */
+.toggle-row{display:flex;align-items:center;justify-content:space-between;margin:14px 0 10px;}
+.toggle-label{font-size:.8rem;color:var(--muted);}
+.toggle{position:relative;width:44px;height:24px;}
+.toggle input{opacity:0;width:0;height:0;}
+.toggle-slider{
+  position:absolute;inset:0;border-radius:12px;
+  background:var(--off);cursor:pointer;transition:.3s;
+  border:1px solid rgba(255,255,255,0.1);
+}
+.toggle-slider::before{
+  content:'';position:absolute;
+  width:18px;height:18px;border-radius:50%;
+  left:3px;bottom:2px;
+  background:#fff;transition:.3s;
+}
+.toggle input:checked + .toggle-slider{
+  background:var(--on);
+  box-shadow:0 0 10px rgba(0,255,157,0.4);
+}
+.toggle input:checked + .toggle-slider::before{transform:translateX(20px);}
+
+/* Slider control */
+.control-row{margin-top:10px;}
+.control-label{
+  display:flex;justify-content:space-between;
+  font-size:.78rem;color:var(--muted);margin-bottom:6px;
+}
+.control-label span{color:var(--accent);font-weight:600;}
+input[type=range]{
+  width:100%;height:4px;
+  -webkit-appearance:none;appearance:none;
+  background:var(--off);border-radius:2px;cursor:pointer;
+}
+input[type=range]::-webkit-slider-thumb{
+  -webkit-appearance:none;
+  width:14px;height:14px;border-radius:50%;
+  background:var(--accent);cursor:pointer;
+  box-shadow:0 0 6px var(--accent);
+  transition:.1s;
+}
+input[type=range]::-webkit-slider-thumb:hover{transform:scale(1.3);}
+
+/* Button controls */
+.card-btns{display:flex;gap:8px;margin-top:12px;}
+.card-btn{
+  flex:1;padding:8px;border-radius:8px;
+  border:1px solid var(--border);
+  background:rgba(255,255,255,0.04);
+  color:var(--muted);font-size:.8rem;
+  cursor:pointer;transition:all .2s;font-family:'Exo 2',sans-serif;
+}
+.card-btn:hover{background:rgba(0,212,255,0.1);color:var(--accent);border-color:rgba(0,212,255,0.3);}
+.card-btn.danger:hover{background:rgba(255,71,87,0.12);color:var(--danger);border-color:rgba(255,71,87,0.3);}
+.card-btn.success:hover{background:rgba(0,255,157,0.1);color:var(--on);border-color:rgba(0,255,157,0.3);}
+.card-btn.active-btn{
+  background:rgba(0,255,157,0.12);color:var(--on);
+  border-color:rgba(0,255,157,0.3);
+}
+
+/* Remove btn */
+.card-remove{
+  position:absolute;top:12px;right:12px;
+  background:none;border:none;
+  color:var(--muted);cursor:pointer;font-size:.9rem;
+  opacity:0;transition:.2s;
+}
+.device-card:hover .card-remove{opacity:1;}
+.card-remove:hover{color:var(--danger);}
+
+/* ══════════════════════════════════════════════════
+   SCENES PAGE
+══════════════════════════════════════════════════ */
+.scenes-grid{
+  display:grid;
+  grid-template-columns:repeat(auto-fill,minmax(200px,1fr));
+  gap:20px;margin-bottom:32px;
+}
+.scene-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:28px 20px;
+  text-align:center;cursor:pointer;transition:all .25s;
+}
+.scene-card:hover,.scene-card.active-scene{
+  border-color:rgba(0,212,255,0.4);
+  background:rgba(0,212,255,0.08);
+  transform:translateY(-4px);
+  box-shadow:0 12px 32px rgba(0,212,255,0.15);
+}
+.scene-icon{font-size:2.5rem;margin-bottom:12px;display:block;}
+.scene-name{
+  font-family:'Orbitron',sans-serif;font-size:.85rem;
+  font-weight:600;letter-spacing:1px;color:var(--text);
+  margin-bottom:8px;
+}
+.scene-desc{font-size:.75rem;color:var(--muted);line-height:1.5;}
+
+/* ══════════════════════════════════════════════════
+   AUTOMATION PAGE
+══════════════════════════════════════════════════ */
+.auto-layout{display:grid;grid-template-columns:1fr 1fr;gap:24px;}
+.panel-box{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:var(--radius);padding:24px;
+}
+.panel-box h3{
+  font-family:'Orbitron',sans-serif;font-size:.85rem;
+  color:var(--accent);letter-spacing:1px;margin-bottom:20px;
+}
+.form-row{margin-bottom:14px;}
+.form-row label{display:block;font-size:.75rem;color:var(--muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px;}
+.form-row input,.form-row select{
+  width:100%;padding:10px 12px;
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;color:var(--text);
+  font-family:'Exo 2',sans-serif;font-size:.88rem;outline:none;
+  transition:border .2s;
+}
+.form-row input:focus,.form-row select:focus{border-color:var(--accent);}
+.form-row select option{background:var(--surface);}
+.btn-add{
+  width:100%;padding:11px;margin-top:6px;
+  background:rgba(0,212,255,0.1);
+  border:1px solid rgba(0,212,255,0.3);
+  border-radius:8px;color:var(--accent);
+  font-family:'Exo 2',sans-serif;font-size:.88rem;font-weight:600;
+  cursor:pointer;transition:all .2s;
+}
+.btn-add:hover{background:rgba(0,212,255,0.2);}
+
+.list-items{margin-top:16px;display:flex;flex-direction:column;gap:8px;}
+.list-item{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:8px;padding:10px 14px;
+  display:flex;justify-content:space-between;align-items:center;
+  font-size:.85rem;
+}
+.list-item .li-time{color:var(--accent);font-weight:600;font-family:monospace;}
+.list-item .li-action{color:var(--text);flex:1;margin:0 12px;}
+.list-item .li-del{
+  background:none;border:none;color:var(--muted);
+  cursor:pointer;font-size:.9rem;transition:.2s;
+}
+.list-item .li-del:hover{color:var(--danger);}
+
+/* ══════════════════════════════════════════════════
+   NOTIFICATIONS
+══════════════════════════════════════════════════ */
+.notif-list{display:flex;flex-direction:column;gap:10px;}
+.notif-item{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:10px;padding:14px 18px;
+  display:flex;gap:14px;align-items:center;
+  animation:slideIn .3s ease;
+}
+@keyframes slideIn{from{opacity:0;transform:translateX(-10px);}to{opacity:1;transform:none;}}
+.notif-item.alert{border-color:rgba(255,71,87,0.3);background:rgba(255,71,87,0.06);}
+.notif-item.warn{border-color:rgba(255,179,71,0.3);background:rgba(255,179,71,0.06);}
+.notif-icon{font-size:1.3rem;}
+.notif-msg{flex:1;font-size:.88rem;}
+.notif-time{font-size:.75rem;color:var(--muted);}
+.empty-state{
+  text-align:center;padding:60px;color:var(--muted);
+  font-size:.9rem;
+}
+.empty-state .es-icon{font-size:3rem;margin-bottom:12px;opacity:.4;}
+
+/* ══════════════════════════════════════════════════
+   ADD DEVICE MODAL
+══════════════════════════════════════════════════ */
+.modal-overlay{
+  display:none;position:fixed;inset:0;
+  background:rgba(0,0,0,0.7);backdrop-filter:blur(4px);
+  z-index:999;align-items:center;justify-content:center;
+}
+.modal-overlay.show{display:flex;}
+.modal{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:36px;width:440px;
+  box-shadow:var(--shadow);animation:fadeUp .3s ease;
+}
+.modal h2{
+  font-family:'Orbitron',sans-serif;font-size:1rem;
+  color:var(--accent);letter-spacing:1px;margin-bottom:24px;
+}
+.device-type-grid{
+  display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:20px;
+}
+.type-btn{
+  padding:14px 8px;border-radius:10px;
+  background:var(--surface);border:1px solid var(--border);
+  color:var(--muted);cursor:pointer;text-align:center;
+  transition:all .2s;font-family:'Exo 2',sans-serif;
+}
+.type-btn .t-icon{font-size:1.5rem;display:block;margin-bottom:6px;}
+.type-btn .t-label{font-size:.75rem;}
+.type-btn:hover,.type-btn.selected{
+  background:rgba(0,212,255,0.1);
+  border-color:rgba(0,212,255,0.4);color:var(--accent);
+}
+.modal-btns{display:flex;gap:12px;margin-top:20px;}
+.btn-cancel{
+  flex:1;padding:12px;border-radius:10px;
+  background:rgba(255,255,255,0.05);
+  border:1px solid var(--border);
+  color:var(--muted);cursor:pointer;font-family:'Exo 2',sans-serif;
+  transition:all .2s;
+}
+.btn-cancel:hover{border-color:rgba(255,71,87,0.4);color:var(--danger);}
+.btn-confirm{
+  flex:1;padding:12px;border-radius:10px;
+  background:rgba(0,212,255,0.15);
+  border:1px solid rgba(0,212,255,0.4);
+  color:var(--accent);cursor:pointer;font-weight:600;
+  font-family:'Exo 2',sans-serif;transition:all .2s;
+}
+.btn-confirm:hover{background:rgba(0,212,255,0.25);}
+
+/* ══════════════════════════════════════════════════
+   POWER SAVING BANNER
+══════════════════════════════════════════════════ */
+.power-banner{
+  display:none;
+  background:rgba(255,179,71,0.1);
+  border:1px solid rgba(255,179,71,0.3);
+  border-radius:10px;padding:12px 20px;
+  margin-bottom:20px;
+  display:none;align-items:center;gap:12px;font-size:.88rem;color:var(--warn);
+}
+.power-banner.show{display:flex;}
+.power-banner button{
+  margin-left:auto;background:none;border:none;
+  color:var(--warn);cursor:pointer;font-size:1rem;
+}
+
+/* ══════════════════════════════════════════════════
+   STATS BAR
+══════════════════════════════════════════════════ */
+.stats-bar{
+  display:grid;grid-template-columns:repeat(4,1fr);gap:16px;
+  margin-bottom:28px;
+}
+.stat-card{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:12px;padding:18px 20px;
+  display:flex;align-items:center;gap:14px;
+}
+.stat-icon{font-size:1.6rem;}
+.stat-val{font-family:'Orbitron',sans-serif;font-size:1.4rem;font-weight:700;color:var(--accent);}
+.stat-lbl{font-size:.75rem;color:var(--muted);margin-top:2px;}
+
+/* ══════════════════════════════════════════════════
+   RESPONSIVE
+══════════════════════════════════════════════════ */
+@media(max-width:768px){
+  .sidebar{display:none;}
+  .stats-bar{grid-template-columns:repeat(2,1fr);}
+  .auto-layout{grid-template-columns:1fr;}
+  .content{padding:20px 16px;}
+  .topbar{padding:0 16px;}
+}
+</style>
+</head>
+<body>
+
+<!-- ══════════════ LOGIN ══════════════ -->
+<div id="loginView" class="view active">
+  <div class="login-box">
+    <div class="login-logo">
+      <div class="logo-icon">🏠</div>
+      <h1>SMARTHOME</h1>
+      <p>Intelligent Living Control System</p>
+    </div>
+    <div class="form-group">
+      <label>Username</label>
+      <input type="text" id="loginUser" placeholder="Enter username" autocomplete="off"/>
+    </div>
+    <div class="form-group">
+      <label>Password</label>
+      <input type="password" id="loginPass" placeholder="Enter password"/>
+    </div>
+    <button class="btn-login" onclick="doLogin()">ACCESS SYSTEM</button>
+    <div class="login-error" id="loginError">Invalid credentials. Please try again.</div>
+    <div class="login-hint">
+      Admin: <span>Alice / admin123</span> &nbsp;|&nbsp; Guest: <span>Bob / guest456</span>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════ DASHBOARD ══════════════ -->
+<div id="dashView" class="view">
+
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <div class="topbar-logo">SMART<span>HOME</span></div>
+      <div class="badge-role" id="roleBadge">ADMIN</div>
+    </div>
+    <div class="topbar-right">
+      <button class="btn-icon notif-btn" onclick="showPage('notifPage')">
+        🔔 Alerts <span class="notif-badge" id="notifBadge">0</span>
+      </button>
+      <div class="topbar-user">Welcome, <strong id="topbarName">Alice</strong></div>
+      <button class="btn-icon" onclick="doLogout()">⏻ Logout</button>
+    </div>
+  </div>
+
+  <div class="dash-body">
+
+    <!-- Sidebar -->
+    <div class="sidebar" id="sidebar">
+      <div class="sidebar-section">Overview</div>
+      <div class="sidebar-item active" onclick="showPage('devicesPage',this)">
+        <span class="si-icon">⚡</span> Devices
+      </div>
+
+      <div class="sidebar-section admin-only">Control</div>
+      <div class="sidebar-item admin-only" onclick="showPage('scenesPage',this)">
+        <span class="si-icon">🎬</span> Scenes
+      </div>
+      <div class="sidebar-item admin-only" onclick="showPage('autoPage',this)">
+        <span class="si-icon">⏱</span> Automation
+      </div>
+
+      <div class="sidebar-section">System</div>
+      <div class="sidebar-item" onclick="showPage('notifPage',this)">
+        <span class="si-icon">🔔</span> Notifications
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="content">
+
+      <!-- DEVICES PAGE -->
+      <div class="page active" id="devicesPage">
+
+        <!-- Stats -->
+        <div class="stats-bar" id="statsBar"></div>
+
+        <!-- Power Saving Banner -->
+        <div class="power-banner" id="powerBanner">
+          ⚡ Power Saving Mode Active — Devices running at reduced capacity.
+          <button onclick="disablePowerSaving()">✕</button>
+        </div>
+
+        <div class="page-title">
+          Device Control
+          <div style="margin-left:auto;display:flex;gap:10px;" id="adminActions">
+            <button class="btn-icon admin-only" onclick="showModal()">＋ Add Device</button>
+            <button class="btn-icon admin-only" onclick="enablePowerSaving()" style="color:var(--warn);border-color:rgba(255,179,71,0.3);">⚡ Power Save</button>
+          </div>
+        </div>
+
+        <div class="devices-grid" id="devicesGrid"></div>
+      </div>
+
+      <!-- SCENES PAGE -->
+      <div class="page" id="scenesPage">
+        <div class="page-title">Scene Control</div>
+        <p style="color:var(--muted);font-size:.9rem;margin-bottom:24px;">Apply a preset scene to configure all devices automatically.</p>
+        <div class="scenes-grid">
+          <div class="scene-card" onclick="applyScene('cinema')">
+            <span class="scene-icon">🎬</span>
+            <div class="scene-name">CINEMA</div>
+            <div class="scene-desc">Lights off · AC 22°C · Fan speed 2</div>
+          </div>
+          <div class="scene-card" onclick="applyScene('sleep')">
+            <span class="scene-icon">🌙</span>
+            <div class="scene-name">SLEEP</div>
+            <div class="scene-desc">Lights off · AC 20°C · Fan speed 1 · Door locked</div>
+          </div>
+          <div class="scene-card" onclick="applyScene('away')">
+            <span class="scene-icon">🔒</span>
+            <div class="scene-name">AWAY</div>
+            <div class="scene-desc">All off · Door locked · Security armed</div>
+          </div>
+          <div class="scene-card" onclick="applyScene('normal')">
+            <span class="scene-icon">☀️</span>
+            <div class="scene-name">NORMAL</div>
+            <div class="scene-desc">Lights 70% · AC 24°C · Fan speed 3</div>
+          </div>
+        </div>
+        <div id="sceneLog" style="margin-top:12px;"></div>
+      </div>
+
+      <!-- AUTOMATION PAGE -->
+      <div class="page" id="autoPage">
+        <div class="page-title">Automation</div>
+        <div class="auto-layout">
+          <div class="panel-box">
+            <h3>⏱ SCHEDULES</h3>
+            <div class="form-row">
+              <label>Time</label>
+              <input type="time" id="schedTime"/>
+            </div>
+            <div class="form-row">
+              <label>Action</label>
+              <input type="text" id="schedAction" placeholder="e.g. Turn off all lights"/>
+            </div>
+            <button class="btn-add" onclick="addSchedule()">＋ Add Schedule</button>
+            <div class="list-items" id="schedList"></div>
+          </div>
+          <div class="panel-box">
+            <h3>📋 RULES</h3>
+            <div class="form-row">
+              <label>Condition</label>
+              <input type="text" id="ruleCondition" placeholder="e.g. motion_detected"/>
+            </div>
+            <div class="form-row">
+              <label>Action</label>
+              <input type="text" id="ruleAction" placeholder="e.g. arm security"/>
+            </div>
+            <button class="btn-add" onclick="addRule()">＋ Add Rule</button>
+            <div class="list-items" id="ruleList"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- NOTIFICATIONS PAGE -->
+      <div class="page" id="notifPage">
+        <div class="page-title">
+          Notifications
+          <button class="btn-icon" style="margin-left:auto;font-size:.8rem;" onclick="clearNotifs()">Clear All</button>
+        </div>
+        <div class="notif-list" id="notifList">
+          <div class="empty-state"><div class="es-icon">🔔</div>No notifications yet.</div>
+        </div>
+      </div>
+
+    </div><!-- /content -->
+  </div><!-- /dash-body -->
+</div><!-- /dashView -->
+
+<!-- ══════════════ ADD DEVICE MODAL ══════════════ -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h2>＋ ADD NEW DEVICE</h2>
+    <div class="device-type-grid" id="typeGrid">
+      <div class="type-btn selected" data-type="Light" onclick="selectType(this)">
+        <span class="t-icon">💡</span><span class="t-label">Light</span>
+      </div>
+      <div class="type-btn" data-type="Fan" onclick="selectType(this)">
+        <span class="t-icon">🌀</span><span class="t-label">Fan</span>
+      </div>
+      <div class="type-btn" data-type="AirConditioner" onclick="selectType(this)">
+        <span class="t-icon">❄️</span><span class="t-label">AC</span>
+      </div>
+      <div class="type-btn" data-type="Door" onclick="selectType(this)">
+        <span class="t-icon">🚪</span><span class="t-label">Door</span>
+      </div>
+      <div class="type-btn" data-type="SecuritySystem" onclick="selectType(this)">
+        <span class="t-icon">🔐</span><span class="t-label">Security</span>
+      </div>
+    </div>
+    <div class="form-row">
+      <label>Device Name</label>
+      <input type="text" id="newDeviceName" placeholder="e.g. Garage Light"/>
+    </div>
+    <div class="form-row">
+      <label>Device ID</label>
+      <input type="text" id="newDeviceId" placeholder="e.g. D007"/>
+    </div>
+    <div class="modal-btns">
+      <button class="btn-cancel" onclick="hideModal()">Cancel</button>
+      <button class="btn-confirm" onclick="addDevice()">Add Device</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ═══════════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════════
+const USERS = [
+  { name:'Alice', password:'admin123', role:'Admin' },
+  { name:'Bob',   password:'guest456', role:'Guest'  },
+];
+
+let currentUser = null;
+let selectedType = 'Light';
+let deviceCounter = 7;
+let notifications = [];
+let schedules = [];
+let rules = [];
+let powerSaving = false;
+
+let devices = [
+  { id:'D001', name:'Living Room Light', type:'Light',          status:false, brightness:50 },
+  { id:'D002', name:'Bedroom Light',     type:'Light',          status:false, brightness:80 },
+  { id:'D003', name:'Ceiling Fan',       type:'Fan',            status:false, speed:3 },
+  { id:'D004', name:'Main AC',           type:'AirConditioner', status:false, temperature:24 },
+  { id:'D005', name:'Front Door',        type:'Door',           status:false, locked:true },
+  { id:'D006', name:'Security Cam',      type:'SecuritySystem', status:false, armed:false },
+];
+
+const TYPE_ICONS = {
+  Light:'💡', Fan:'🌀', AirConditioner:'❄️',
+  Door:'🚪', SecuritySystem:'🔐'
+};
+
+// ═══════════════════════════════════════════════════
+//  AUTH
+// ═══════════════════════════════════════════════════
+function doLogin(){
+  const name = document.getElementById('loginUser').value.trim();
+  const pass = document.getElementById('loginPass').value;
+  const err  = document.getElementById('loginError');
+
+  const user = USERS.find(u => u.name.toLowerCase() === name.toLowerCase());
+  if(user && user.password === pass){
+    currentUser = user;
+    err.classList.remove('show');
+    document.getElementById('loginUser').value='';
+    document.getElementById('loginPass').value='';
+    setupDash();
+    switchView('dashView');
+  } else {
+    err.classList.add('show');
+    document.getElementById('loginPass').value='';
+  }
+}
+
+function doLogout(){
+  currentUser = null;
+  powerSaving = false;
+  document.getElementById('powerBanner').classList.remove('show');
+  switchView('loginView');
+  showPage('devicesPage');
+}
+
+// Enter key on login
+document.addEventListener('keydown', e => {
+  if(e.key==='Enter' && document.getElementById('loginView').classList.contains('active'))
+    doLogin();
+});
+
+// ═══════════════════════════════════════════════════
+//  VIEW SWITCHING
+// ═══════════════════════════════════════════════════
+function switchView(id){
+  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+}
+
+function showPage(id, el){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  if(el){
+    document.querySelectorAll('.sidebar-item').forEach(s=>s.classList.remove('active'));
+    el.classList.add('active');
+  }
+  if(id==='notifPage') renderNotifs();
+}
+
+// ═══════════════════════════════════════════════════
+//  DASHBOARD SETUP
+// ═══════════════════════════════════════════════════
+function setupDash(){
+  const isAdmin = currentUser.role === 'Admin';
+
+  document.getElementById('topbarName').textContent = currentUser.name;
+  const badge = document.getElementById('roleBadge');
+  badge.textContent = currentUser.role.toUpperCase();
+  badge.className = 'badge-role ' + (isAdmin ? 'admin':'guest');
+
+  // Show/hide admin-only items
+  document.querySelectorAll('.admin-only').forEach(el => {
+    el.style.display = isAdmin ? '' : 'none';
+  });
+
+  renderStats();
+  renderDevices();
+  renderNotifBadge();
+}
+
+// ═══════════════════════════════════════════════════
+//  STATS BAR
+// ═══════════════════════════════════════════════════
+function renderStats(){
+  const total  = devices.length;
+  const on     = devices.filter(d=>d.status).length;
+  const lights = devices.filter(d=>d.type==='Light').length;
+  const armed  = devices.find(d=>d.type==='SecuritySystem'&&d.armed) ? 'YES':'NO';
+
+  document.getElementById('statsBar').innerHTML=`
+    <div class="stat-card"><span class="stat-icon">📦</span><div><div class="stat-val">${total}</div><div class="stat-lbl">Total Devices</div></div></div>
+    <div class="stat-card"><span class="stat-icon">✅</span><div><div class="stat-val" style="color:var(--on)">${on}</div><div class="stat-lbl">Devices ON</div></div></div>
+    <div class="stat-card"><span class="stat-icon">💡</span><div><div class="stat-val">${lights}</div><div class="stat-lbl">Lights</div></div></div>
+    <div class="stat-card"><span class="stat-icon">🔐</span><div><div class="stat-val" style="color:${armed==='YES'?'var(--on)':'var(--danger)'}">${armed}</div><div class="stat-lbl">Security</div></div></div>
+  `;
+}
+
+// ═══════════════════════════════════════════════════
+//  DEVICES
+// ═══════════════════════════════════════════════════
+function renderDevices(){
+  const isAdmin = currentUser.role==='Admin';
+  const visible = isAdmin ? devices : devices.filter(d=>d.type==='Light'||d.type==='Fan');
+
+  const grid = document.getElementById('devicesGrid');
+  if(visible.length===0){
+    grid.innerHTML=`<div class="empty-state" style="grid-column:1/-1"><div class="es-icon">📦</div>No devices available.</div>`;
+    return;
+  }
+  grid.innerHTML = visible.map(d => buildCard(d, isAdmin)).join('');
+  renderStats();
+}
+
+function buildCard(d, isAdmin){
+  const icon = TYPE_ICONS[d.type];
+  const statusOn = d.status;
+  let controls = '';
+
+  if(d.type==='Light'){
+    controls=`
+      <div class="control-row">
+        <div class="control-label">Brightness <span id="bv-${d.id}">${d.brightness}%</span></div>
+        <input type="range" min="0" max="100" value="${d.brightness}"
+          oninput="setVal('${d.id}','brightness',this.value)"
+          ${!isAdmin?'disabled':''}>
+      </div>`;
+  } else if(d.type==='Fan'){
+    controls=`
+      <div class="control-row">
+        <div class="control-label">Speed <span id="bv-${d.id}">${d.speed}/5</span></div>
+        <input type="range" min="1" max="5" value="${d.speed}"
+          oninput="setVal('${d.id}','speed',this.value)"
+          ${!isAdmin?'disabled':''}>
+      </div>`;
+  } else if(d.type==='AirConditioner'){
+    controls=`
+      <div class="control-row">
+        <div class="control-label">Temperature <span id="bv-${d.id}">${d.temperature}°C</span></div>
+        <input type="range" min="16" max="30" value="${d.temperature}"
+          oninput="setVal('${d.id}','temperature',this.value)"
+          ${!isAdmin?'disabled':''}>
+      </div>`;
+  } else if(d.type==='Door'){
+    if(isAdmin) controls=`
+      <div class="card-btns">
+        <button class="card-btn success ${!d.locked?'active-btn':''}" onclick="doorAction('${d.id}','unlock')">🔓 Unlock</button>
+        <button class="card-btn danger  ${d.locked?'active-btn':''}"  onclick="doorAction('${d.id}','lock')">🔒 Lock</button>
+      </div>`;
+    else controls=`<div style="font-size:.8rem;color:var(--muted);margin-top:8px;">${d.locked?'🔒 Locked':'🔓 Unlocked'}</div>`;
+  } else if(d.type==='SecuritySystem'){
+    if(isAdmin) controls=`
+      <div class="card-btns">
+        <button class="card-btn success ${d.armed?'active-btn':''}" onclick="secAction('${d.id}','arm')">🛡 Arm</button>
+        <button class="card-btn danger"  onclick="secAction('${d.id}','disarm')">🚫 Disarm</button>
+        <button class="card-btn"         onclick="secAction('${d.id}','alert')">🚨 Alert</button>
+      </div>`;
+    else controls=`<div style="font-size:.8rem;color:var(--muted);margin-top:8px;">${d.armed?'🛡 Armed':'⚫ Disarmed'}</div>`;
+  }
+
+  const removeBtn = isAdmin
+    ? `<button class="card-remove" onclick="removeDevice('${d.id}')" title="Remove">✕</button>`
+    : '';
+
+  const canToggle = isAdmin || d.type==='Light' || d.type==='Fan';
+
+  return `
+  <div class="device-card ${statusOn?'on':''}" id="card-${d.id}">
+    ${removeBtn}
+    <div class="card-header">
+      <div class="card-icon ${statusOn?'on':''}">${icon}</div>
+      <div class="status-dot ${statusOn?'on':''}"></div>
+    </div>
+    <div class="card-name">${d.name}</div>
+    <div class="card-type">${d.type}</div>
+    <div class="card-id"># ${d.id}</div>
+    <div class="toggle-row">
+      <span class="toggle-label">${statusOn?'ON':'OFF'}</span>
+      <label class="toggle">
+        <input type="checkbox" ${statusOn?'checked':''} ${!canToggle?'disabled':''}
+          onchange="toggleDevice('${d.id}',this.checked)">
+        <span class="toggle-slider"></span>
+      </label>
+    </div>
+    ${controls}
+  </div>`;
+}
+
+function toggleDevice(id, on){
+  const d = devices.find(x=>x.id===id);
+  if(!d) return;
+  d.status = on;
+  addNotif(on ? `${d.name} turned ON` : `${d.name} turned OFF`, 'info');
+  renderDevices();
+}
+
+function setVal(id, prop, val){
+  const d = devices.find(x=>x.id===id);
+  if(!d) return;
+  d[prop] = parseInt(val);
+  const el = document.getElementById('bv-'+id);
+  if(el) el.textContent = prop==='speed' ? val+'/5' : prop==='temperature' ? val+'°C' : val+'%';
+}
+
+function doorAction(id, action){
+  const d = devices.find(x=>x.id===id);
+  if(!d) return;
+  d.locked = (action==='lock');
+  addNotif(`${d.name} ${d.locked?'locked':'unlocked'}`, 'warn');
+  renderDevices();
+}
+
+function secAction(id, action){
+  const d = devices.find(x=>x.id===id);
+  if(!d) return;
+  if(action==='arm')   { d.armed=true;  addNotif('Security system ARMED', 'alert'); }
+  if(action==='disarm'){ d.armed=false; addNotif('Security system disarmed', 'warn'); }
+  if(action==='alert') { addNotif('🚨 SECURITY ALERT TRIGGERED!', 'alert'); }
+  renderDevices();
+}
+
+function removeDevice(id){
+  const d = devices.find(x=>x.id===id);
+  if(!d) return;
+  if(!confirm(`Remove "${d.name}"?`)) return;
+  devices = devices.filter(x=>x.id!==id);
+  addNotif(`Device removed: ${d.name}`, 'warn');
+  renderDevices();
+}
+
+// ═══════════════════════════════════════════════════
+//  POWER SAVING
+// ═══════════════════════════════════════════════════
+function enablePowerSaving(){
+  powerSaving = true;
+  devices.forEach(d=>{
+    if(d.type==='Light')          { d.brightness=20; d.status=true; }
+    if(d.type==='Fan')            { d.speed=1; }
+    if(d.type==='AirConditioner') { d.temperature=26; }
+  });
+  addNotif('⚡ Power Saving Mode enabled — devices reduced.', 'warn');
+  document.getElementById('powerBanner').classList.add('show');
+  renderDevices();
+}
+function disablePowerSaving(){
+  powerSaving = false;
+  document.getElementById('powerBanner').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════════
+//  SCENES
+// ═══════════════════════════════════════════════════
+function applyScene(scene){
+  document.querySelectorAll('.scene-card').forEach(c=>c.classList.remove('active-scene'));
+  event.currentTarget.classList.add('active-scene');
+
+  switch(scene){
+    case 'cinema':
+      devices.forEach(d=>{
+        if(d.type==='Light')          { d.status=false; }
+        if(d.type==='Fan')            { d.speed=2; d.status=true; }
+        if(d.type==='AirConditioner') { d.temperature=22; d.status=true; }
+      });
+      addNotif('🎬 Cinema mode activated', 'info');
+      break;
+    case 'sleep':
+      devices.forEach(d=>{
+        if(d.type==='Light')          { d.status=false; }
+        if(d.type==='Fan')            { d.speed=1; d.status=true; }
+        if(d.type==='AirConditioner') { d.temperature=20; d.status=true; }
+        if(d.type==='Door')           { d.locked=true; }
+      });
+      addNotif('🌙 Sleep mode activated', 'info');
+      break;
+    case 'away':
+      devices.forEach(d=>{
+        if(d.type==='Light'||d.type==='Fan'||d.type==='AirConditioner') d.status=false;
+        if(d.type==='Door')           { d.locked=true; }
+        if(d.type==='SecuritySystem') { d.armed=true; }
+      });
+      addNotif('🔒 Away mode activated — home secured', 'alert');
+      break;
+    case 'normal':
+      devices.forEach(d=>{
+        if(d.type==='Light')          { d.brightness=70; d.status=true; }
+        if(d.type==='Fan')            { d.speed=3; d.status=true; }
+        if(d.type==='AirConditioner') { d.temperature=24; d.status=true; }
+      });
+      addNotif('☀️ Normal mode activated', 'info');
+      break;
+  }
+  renderDevices();
+  document.getElementById('sceneLog').innerHTML=
+    `<div style="color:var(--accent2);font-size:.85rem;margin-top:8px;">✓ Scene applied successfully.</div>`;
+  setTimeout(()=>document.getElementById('sceneLog').innerHTML='', 3000);
+}
+
+// ═══════════════════════════════════════════════════
+//  AUTOMATION
+// ═══════════════════════════════════════════════════
+function addSchedule(){
+  const time   = document.getElementById('schedTime').value;
+  const action = document.getElementById('schedAction').value.trim();
+  if(!time||!action) return;
+  schedules.push({time,action,id:Date.now()});
+  document.getElementById('schedTime').value='';
+  document.getElementById('schedAction').value='';
+  addNotif(`Schedule added: "${action}" at ${time}`, 'info');
+  renderSchedules();
+}
+function renderSchedules(){
+  const list = document.getElementById('schedList');
+  list.innerHTML = schedules.length===0
+    ? '<div style="color:var(--muted);font-size:.8rem;margin-top:8px;">No schedules yet.</div>'
+    : schedules.map(s=>`
+      <div class="list-item">
+        <span class="li-time">${s.time}</span>
+        <span class="li-action">${s.action}</span>
+        <button class="li-del" onclick="delSchedule(${s.id})">✕</button>
+      </div>`).join('');
+}
+function delSchedule(id){ schedules=schedules.filter(s=>s.id!==id); renderSchedules(); }
+
+function addRule(){
+  const cond   = document.getElementById('ruleCondition').value.trim();
+  const action = document.getElementById('ruleAction').value.trim();
+  if(!cond||!action) return;
+  rules.push({cond,action,id:Date.now()});
+  document.getElementById('ruleCondition').value='';
+  document.getElementById('ruleAction').value='';
+  addNotif(`Rule added: IF "${cond}" THEN "${action}"`, 'info');
+  renderRules();
+}
+function renderRules(){
+  const list = document.getElementById('ruleList');
+  list.innerHTML = rules.length===0
+    ? '<div style="color:var(--muted);font-size:.8rem;margin-top:8px;">No rules yet.</div>'
+    : rules.map(r=>`
+      <div class="list-item">
+        <span class="li-time">IF</span>
+        <span class="li-action">${r.cond} → ${r.action}</span>
+        <button class="li-del" onclick="delRule(${r.id})">✕</button>
+      </div>`).join('');
+}
+function delRule(id){ rules=rules.filter(r=>r.id!==id); renderRules(); }
+
+// ═══════════════════════════════════════════════════
+//  NOTIFICATIONS
+// ═══════════════════════════════════════════════════
+function addNotif(msg, type='info'){
+  const now = new Date().toLocaleTimeString();
+  notifications.unshift({msg,type,time:now,id:Date.now()});
+  renderNotifBadge();
+}
+function renderNotifBadge(){
+  const b = document.getElementById('notifBadge');
+  b.textContent = notifications.length;
+  b.style.display = notifications.length ? 'flex':'none';
+}
+function renderNotifs(){
+  const list = document.getElementById('notifList');
+  if(!notifications.length){
+    list.innerHTML=`<div class="empty-state"><div class="es-icon">🔔</div>No notifications yet.</div>`;
+    return;
+  }
+  list.innerHTML = notifications.map(n=>`
+    <div class="notif-item ${n.type==='alert'?'alert':n.type==='warn'?'warn':''}">
+      <div class="notif-icon">${n.type==='alert'?'🚨':n.type==='warn'?'⚠️':'ℹ️'}</div>
+      <div class="notif-msg">${n.msg}</div>
+      <div class="notif-time">${n.time}</div>
+    </div>`).join('');
+}
+function clearNotifs(){
+  notifications=[];
+  renderNotifBadge();
+  renderNotifs();
+}
+
+// ═══════════════════════════════════════════════════
+//  ADD DEVICE MODAL
+// ═══════════════════════════════════════════════════
+function showModal(){ document.getElementById('modalOverlay').classList.add('show'); }
+function hideModal(){ document.getElementById('modalOverlay').classList.remove('show'); }
+
+function selectType(el){
+  document.querySelectorAll('.type-btn').forEach(b=>b.classList.remove('selected'));
+  el.classList.add('selected');
+  selectedType = el.dataset.type;
+}
+
+function addDevice(){
+  const name = document.getElementById('newDeviceName').value.trim();
+  const id   = document.getElementById('newDeviceId').value.trim();
+  if(!name||!id){ alert('Please fill in all fields.'); return; }
+  if(devices.find(d=>d.id===id)){ alert('Device ID already exists.'); return; }
+
+  const base = {id, name, type:selectedType, status:false};
+  if(selectedType==='Light')          base.brightness=50;
+  if(selectedType==='Fan')            base.speed=3;
+  if(selectedType==='AirConditioner') base.temperature=24;
+  if(selectedType==='Door')           base.locked=true;
+  if(selectedType==='SecuritySystem') base.armed=false;
+
+  devices.push(base);
+  addNotif(`Device added: ${name} (${selectedType})`, 'info');
+  hideModal();
+  document.getElementById('newDeviceName').value='';
+  document.getElementById('newDeviceId').value='';
+  renderDevices();
+}
+
+// Close modal on overlay click
+document.getElementById('modalOverlay').addEventListener('click', e=>{
+  if(e.target===e.currentTarget) hideModal();
+});
+</script>
+</body>
+</html>
