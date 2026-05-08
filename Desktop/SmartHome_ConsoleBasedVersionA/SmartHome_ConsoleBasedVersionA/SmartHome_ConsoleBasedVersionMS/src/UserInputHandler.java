@@ -2,28 +2,35 @@ import exceptions.*;
 import java.util.List;
 import java.util.Scanner;
 
+// handles all console interaction — login, admin menu, guest menu, and the main loop
 public class UserInputHandler {
 
     private Scanner   scanner;
     private SmartHome smartHome;
-    private User      currentUser;   // tracks who is logged in
+    private User      currentUser; // whoever is currently logged in
+
 
     // ── Constructor ──────────────────────────────────────────
+
     public UserInputHandler(SmartHome smartHome) {
         this.scanner     = new Scanner(System.in);
         this.smartHome   = smartHome;
         this.currentUser = null;
     }
 
+
     // ── Input helper ─────────────────────────────────────────
+
     public String getUserInput(String prompt) {
         System.out.print(prompt);
         return scanner.nextLine().trim();
     }
 
+
     // ════════════════════════════════════════════════════════
     //  LOGIN SCREEN
     // ════════════════════════════════════════════════════════
+
     public boolean showLoginScreen() {
         System.out.println("\n╔══════════════════════════════════════╗");
         System.out.println("║        SMART HOME  --  LOGIN         ║");
@@ -35,7 +42,7 @@ public class UserInputHandler {
         for (User u : smartHome.getUsers()) {
             if (u.getName().equalsIgnoreCase(name)) {
                 try {
-                    u.login(password);   // throws AuthenticationException if wrong
+                    u.login(password); // throws AuthenticationException on wrong password
                     currentUser = u;
                     return true;
                 } catch (AuthenticationException e) {
@@ -48,9 +55,11 @@ public class UserInputHandler {
         return false;
     }
 
+
     // ════════════════════════════════════════════════════════
     //  ADMIN MENU
     // ════════════════════════════════════════════════════════
+
     private void displayAdminMenu() {
         System.out.println("\n╔══════════════════════════════════════╗");
         System.out.println("║    SMART HOME  --  ADMIN PANEL       ║");
@@ -119,6 +128,7 @@ public class UserInputHandler {
             case "6" -> adminManageAutomation();
 
             case "7" -> {
+                // find the first security system and trigger its alert
                 boolean found = false;
                 for (Device d : smartHome.getDevices()) {
                     if (d instanceof SecuritySystem ss) {
@@ -151,7 +161,7 @@ public class UserInputHandler {
                 String deviceName = getUserInput("  Search Device: ");
                 searchDevice(deviceName, smartHome.getDevices());
             }
-            
+
             case "12" -> {
                 try {
                     currentUser.logout();
@@ -168,16 +178,19 @@ public class UserInputHandler {
         return cmd;
     }
 
-    // Setting up search device functionality
-     public void searchDevice(String deviceName, List<Device> devices){
-        for (Device device: devices) {
-       if(deviceName.equals(device.getName())) {
-        System.out.println("[" + device.getDeviceId() + "] " + "[" + device.getClass() + "]" +
-        "[" + device.getName() + "]"+ "[" + device.getStatusString() + "]");
-       }
+    // prints matching device info — used by admin search
+    public void searchDevice(String deviceName, List<Device> devices) {
+        for (Device device : devices) {
+            if (deviceName.equals(device.getName())) {
+                System.out.println("[" + device.getDeviceId() + "] [" + device.getClass() + "] ["
+                        + device.getName() + "] [" + device.getStatusString() + "]");
+            }
+        }
     }
-    }
+
+
     // ── Admin: set a specific device property ────────────────
+
     private void adminSetProperty() {
         try {
             smartHome.showAllDevices();
@@ -207,7 +220,7 @@ public class UserInputHandler {
                     ss.arm();
                 } else {
                     String pin = getUserInput("  Enter PIN: ");
-                    ss.disarm(pin);  // now requires PIN
+                    ss.disarm(pin);
                 }
             } else {
                 System.out.println("  No configurable property for this device.");
@@ -224,7 +237,9 @@ public class UserInputHandler {
         }
     }
 
+
     // ── Admin: automation sub-menu ───────────────────────────
+
     private void adminManageAutomation() {
         System.out.println("\n  -- Automation Manager --");
         System.out.println("  a. Add schedule");
@@ -270,9 +285,11 @@ public class UserInputHandler {
         }
     }
 
+
     // ════════════════════════════════════════════════════════
     //  GUEST MENU
     // ════════════════════════════════════════════════════════
+
     private void displayGuestMenu() {
         System.out.println("\n╔══════════════════════════════════════╗");
         System.out.println("║    SMART HOME  --  GUEST PANEL       ║");
@@ -293,6 +310,7 @@ public class UserInputHandler {
 
         switch (cmd) {
             case "1" -> {
+                // guests only see lights and fans — everything else is hidden
                 System.out.println("\n[Guest View] Visible devices (lights & fans only):");
                 for (Device d : devices)
                     if (d instanceof Light || d instanceof Fan) d.showStatus();
@@ -360,14 +378,17 @@ public class UserInputHandler {
         return cmd;
     }
 
+
     // ════════════════════════════════════════════════════════
     //  MAIN LOOP
     // ════════════════════════════════════════════════════════
+
     public void runLoop() {
         String result = "";
 
         while (!result.equals("EXIT")) {
             if (currentUser == null) {
+                // give the user 3 attempts to log in before exiting
                 boolean loggedIn = false;
                 int attempts = 0;
                 while (!loggedIn && attempts < 3) {
@@ -382,6 +403,7 @@ public class UserInputHandler {
                 }
             }
 
+            // show the right menu based on who's logged in
             if (currentUser instanceof Admin) {
                 displayAdminMenu();
                 result = parseAdminCommand(scanner.nextLine().trim());
@@ -396,7 +418,9 @@ public class UserInputHandler {
         scanner.close();
     }
 
+
     // ── Admin: add a new device ──────────────────────────────
+
     private void adminAddDevice() {
         try {
             System.out.println("\n  -- Add New Device --");
@@ -424,17 +448,19 @@ public class UserInputHandler {
         }
     }
 
+
     // ── Admin: remove an existing device ─────────────────────
+
     private void adminRemoveDevice() {
         try {
             smartHome.showAllDevices();
             if (smartHome.getDevices().isEmpty()) return;
-            String name   = getUserInput("  Enter device name to remove: ");
-            Device target = findDevice(name);
+            String name         = getUserInput("  Enter device name to remove: ");
+            Device target       = findDevice(name);
             String confirmation = getUserInput("  Enter yes to confirm deletion: ");
-            if ((target != null)&&(confirmation.toLowerCase().equals("yes"))) {
+            if (target != null && confirmation.toLowerCase().equals("yes")) {
                 smartHome.removeDevice(target);
-            } else if (target == null){
+            } else if (target == null) {
                 System.out.println("  X  Device '" + name + "' not found.");
             } else {
                 System.out.println("  X  Device '" + name + "' not deleted");
@@ -444,13 +470,17 @@ public class UserInputHandler {
         }
     }
 
+
     // ── Helpers ──────────────────────────────────────────────
+
+    // finds a device by name (case-insensitive) — returns null if not found
     private Device findDevice(String name) {
         for (Device d : smartHome.getDevices())
             if (d.getName().equalsIgnoreCase(name)) return d;
         return null;
     }
 
+    // pads a string to n characters — used to keep menu borders aligned
     private String padRight(String s, int n) {
         return String.format("%-" + n + "s", s);
     }
