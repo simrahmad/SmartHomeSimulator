@@ -1,18 +1,23 @@
-// ============================================================
-//  SmartHome.java  –  Central hub
-// ============================================================
+import exceptions.DeviceNotFoundException;
+import exceptions.InvalidDeviceStateException;
+import exceptions.SmartHomeException;
 import java.util.ArrayList;
 import java.util.List;
+import java.io.*;
 
+// central container for all devices, users, automation, and notifications
 public class SmartHome {
 
-    private List<Device>        devices;
-    private Automation          automation;
+    private List<Device>         devices;
+    private Automation           automation;
     private ContextualController contextualController;
-    private List<User>          users;
-    private NotificationSystem  notificationSystem;
+    private List<User>           users;
+    private NotificationSystem   notificationSystem;
+
 
     // ── Constructor ──────────────────────────────────────────
+
+    // initializes all subsystems — everything starts empty and fresh
     public SmartHome() {
         this.devices              = new ArrayList<>();
         this.users                = new ArrayList<>();
@@ -21,40 +26,53 @@ public class SmartHome {
         this.contextualController = new ContextualController();
     }
 
+
     // ── Getters ──────────────────────────────────────────────
+
     public List<Device>         getDevices()              { return devices; }
     public List<User>           getUsers()                { return users; }
     public Automation           getAutomation()           { return automation; }
     public ContextualController getContextualController() { return contextualController; }
     public NotificationSystem   getNotificationSystem()   { return notificationSystem; }
 
+
     // ── Device management ────────────────────────────────────
-    public void addDevice(Device d) {
+
+    // adds a device — throws if a device with the same ID already exists
+    public void addDevice(Device d) throws SmartHomeException {
+        for (Device existing : devices) {
+            if (existing.getDeviceId().equals(d.getDeviceId())) {
+                throw new SmartHomeException(
+                        "[SmartHome] Device with ID " + d.getDeviceId() + " already exists!"
+                );
+            }
+        }
         devices.add(d);
         System.out.println("[SmartHome] Device added: " + d.getName() + " (ID: " + d.getDeviceId() + ")");
     }
 
-    public void removeDevice(Device d) {
-        if (devices.remove(d)) {
-            System.out.println("[SmartHome] Device removed: " + d.getName());
-        } else {
-            System.out.println("[SmartHome] Device not found: " + d.getName());
+    // removes a device — throws if not found
+    public void removeDevice(Device d) throws DeviceNotFoundException {
+        if (!devices.remove(d)) {
+            throw new DeviceNotFoundException("[SmartHome] Device not found: " + d.getName());
         }
+        System.out.println("[SmartHome] Device removed: " + d.getName());
     }
 
-    public void showAllDevices() {
+    // prints status of all devices — throws if no devices are registered
+    public void showAllDevices() throws SmartHomeException {
         System.out.println("\n══════════════════════════════════════════");
         System.out.println("  SMART HOME – Device Status (" + devices.size() + " devices)");
         System.out.println("══════════════════════════════════════════");
         if (devices.isEmpty()) {
-            System.out.println("  No devices registered.");
-        } else {
-            for (Device d : devices) d.showStatus();
+            throw new SmartHomeException("[SmartHome] No devices registered!");
         }
+        for (Device d : devices) d.showStatus();
         System.out.println("══════════════════════════════════════════\n");
     }
 
-    public void controlDevice(String name) {
+    // toggles a device on/off by name — throws if not found
+    public void controlDevice(String name) throws DeviceNotFoundException, InvalidDeviceStateException {
         for (Device d : devices) {
             if (d.getName().equalsIgnoreCase(name)) {
                 System.out.println("[SmartHome] Toggling: " + name);
@@ -62,29 +80,66 @@ public class SmartHome {
                 return;
             }
         }
-        System.out.println("[SmartHome] Device not found: " + name);
+        throw new DeviceNotFoundException("[SmartHome] Device not found: " + name);
     }
 
+
     // ── Power saving ─────────────────────────────────────────
-    public void enablePowerSavingMode() {
+
+    // dims lights, raises AC temp, slows fans, then fires a high-energy alert
+    public void enablePowerSavingMode() throws InvalidDeviceStateException, SmartHomeException {
         System.out.println("\n[SmartHome] ⚡ Power Saving Mode ENABLED");
         for (Device d : devices) {
-            if (d instanceof Light) {
-                ((Light) d).setBrightness(20, true);
-            }
-            if (d instanceof AirConditioner) {
-                ((AirConditioner) d).setTemperature(26, true);
-            }
-            if (d instanceof Fan) {
-                ((Fan) d).setSpeed(1, true);
-            }
+            if (d instanceof Light)          ((Light) d).setBrightness(20, true);
+            if (d instanceof AirConditioner) ((AirConditioner) d).setTemperature(26, true);
+            if (d instanceof Fan)            ((Fan) d).setSpeed(1, true);
         }
         notificationSystem.energyUsageHigh();
     }
 
+
     // ── User management ──────────────────────────────────────
-    public void addUser(User u) {
+
+    // registers a user — throws if someone with the same name already exists
+    public void addUser(User u) throws SmartHomeException {
+        for (User existing : users) {
+            if (existing.getName().equalsIgnoreCase(u.getName())) {
+                throw new SmartHomeException("[SmartHome] User " + u.getName() + " already exists!");
+            }
+        }
         users.add(u);
         System.out.println("[SmartHome] User registered: " + u.getName() + " [" + u.getRole() + "]");
+    }
+
+
+    // ── File I/O ─────────────────────────────────────────────
+
+    // loads devices, notifications, and users from disk — silently starts fresh if no file found
+    public void loadData(String filename) {
+        File file = new File(filename);
+        if (!file.exists()) {
+            System.out.println("[System] No previous data found. Starting fresh.");
+            return;
+        }
+        try (ObjectInputStream ois = new ObjectInputStream(new FileInputStream(file))) {
+            this.devices            = (List<Device>) ois.readObject(); // must match save order
+            this.notificationSystem = (NotificationSystem) ois.readObject();
+            this.users              = (List<User>) ois.readObject();
+            System.out.println("[System] Data loaded successfully");
+        } catch (Exception e) {
+            System.out.println("  X  Error loading data: " + e.getMessage());
+        }
+    }
+
+    // saves devices, notifications, and users to disk before exit
+    public void saveData(String filename) {
+        try (ObjectOutputStream oos = new ObjectOutputStream(new FileOutputStream(filename))) {
+            oos.writeObject(this.devices);
+            oos.writeObject(this.notificationSystem);
+            oos.writeObject(this.users);
+            System.out.println("\n[System] Data saved successfully");
+        } catch (IOException e) {
+            System.out.println("\n  X  Error saving data: " + e.getMessage());
+        }
     }
 }
